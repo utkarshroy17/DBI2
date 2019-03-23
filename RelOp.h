@@ -6,6 +6,13 @@
 #include "Record.h"
 #include "Function.h"
 
+struct sf_utils{
+	DBFile inFile;
+	Pipe *outPipe;
+	CNF selOperator;
+	Record literal;
+};
+
 class RelationalOp {
 	public:
 	// blocks the caller until the particular relational operator 
@@ -19,8 +26,9 @@ class RelationalOp {
 class SelectFile : public RelationalOp { 
 
 	private:
-	// pthread_t thread;
-	// Record *buffer;
+	pthread_t thread;
+	Record *buffer;
+	int runLength;
 
 	public:
 

@@ -37,18 +37,18 @@ void readMetaFile (char *f_path, OrderMaker *&o, int &rl) {
 	string line;
 	ifstream meta (metaFilename);
 	getline(meta, line);
-	cout << "line\n";
+	//cout << "line\n";
 
 	if(line.compare("heap") == 0){
 		cout << "heap";
 	}if(line.compare("sorted") == 0){
-		cout << "sorted \n";
+		//cout << "sorted \n";
 		getline(meta, line);
 		int runLength = stoi (line, nullptr, 10);
-		cout << "runLength " << runLength << endl;
+		//cout << "runLength " << runLength << endl;
 		getline(meta, line);
 		int numAtts = stoi (line, nullptr, 10);
-		cout << "numAtts " << numAtts << endl;
+		//cout << "numAtts " << numAtts << endl;
 		
 		int whichAtts[numAtts];
 		Type whichTypes[numAtts];
@@ -77,9 +77,9 @@ void readMetaFile (char *f_path, OrderMaker *&o, int &rl) {
 
 		OrderMaker *sortorder = new OrderMaker();
 		sortorder->Set(numAtts, whichAtts, whichTypes);
-		cout << "set order and runlen" << endl;
+		//cout << "set order and runlen" << endl;
 		o = sortorder;
-		cout << "set order and runlen" << endl;
+		//cout << "set order and runlen" << endl;
 		rl = runLength;		
 		// dummy.Print();
 		
@@ -359,14 +359,14 @@ void SortedFile::ChangeReadToWrite(){
 	}
 }
 
-void SortedFile::ChangeWriteToRead(){
-	cout << "ChangeWriteToRead \n";
-	if(m == WRITE){
-		m = READ;
+void SortedFile::ChangeWriteToRead(){	
+	//cout << "ChangeWriteToRead \n";
+
+	if(m == WRITE) {
 		readPageBuffer->EmptyItOut();
 		MergeOutputPipeToFile();
 		MoveFirst();
-	}
+	}	
 }
 
 
@@ -414,13 +414,13 @@ int SortedFile::Open(char *f_path) {
 	OrderMaker *o;
 	int runlen;
 	readMetaFile(f_path, sortorder, runlen);
-	cout << "SortedFile::Open \n";
+	/*cout << "SortedFile::Open \n";
 	
 	cout << "runLength is " << runlen << endl;
-	cout << "OrderMaker is ";
+	cout << "OrderMaker is ";*/
 	
 	
-	sortorder->Print();
+	//sortorder->Print();
 	endOfFile = 0;
 	pageIndex = 1;
 
@@ -442,7 +442,7 @@ void SortedFile::MoveFirst() {
 			int result = readPageBuffer->GetFirst(current);		
 		}
 		else {
-			
+			// Do nothing
 
 		}
 	}
@@ -496,10 +496,9 @@ int SortedFile::GetNext(Record &fetchme) {
 			pageIndex++;
 			currFile.GetPage(readPageBuffer, pageIndex);
 			readPageBuffer->GetFirst(current);
-
 		}
 	}
-
+	
 	return 1;
 }
 
