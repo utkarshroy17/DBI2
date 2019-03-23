@@ -440,6 +440,7 @@ void SortedFile::MoveFirst() {
 			currFile.GetPage(readPageBuffer, pageIndex); 
 
 			int result = readPageBuffer->GetFirst(current);		
+			int prevIsCurrentFull = result;
 		}
 		else {
 			
@@ -479,28 +480,30 @@ void SortedFile::Add(Record &rec) {
 
 int SortedFile::GetNext(Record &fetchme) {
 
-	//Get first page
-	ChangeWriteToRead();
+		ChangeWriteToRead();
 
 	if (endOfFile == 1) return 0;
 
 	fetchme.Copy(current);
+	int prevIsCurrentFull = isCurrentFull;
 
 	if (!readPageBuffer->GetFirst(current)) {
 
 		if (pageIndex >= currFile.GetLength() - 2) {
 			endOfFile = 1;
-			return 0;
+			isCurrentFull = 0;
 		}
 		else {
 			pageIndex++;
 			currFile.GetPage(readPageBuffer, pageIndex);
 			readPageBuffer->GetFirst(current);
-
+			isCurrentFull = 1;
 		}
+	}else{
+		isCurrentFull = 1;
 	}
 
-	return 1;
+	return prevIsCurrentFull;
 }
 
 int SortedFile::GetNext(Record &fetchme, CNF &cnf, Record &literal) {
