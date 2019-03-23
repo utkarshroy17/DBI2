@@ -31,6 +31,7 @@ class SortedFile : virtual public GenericDBFile {
 	bool queryChange;
 	int endOfFile;
 	OrderMaker *queryOrder;
+	int isCurrentFull;
 	
 	ofstream out;
 

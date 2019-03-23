@@ -10,3 +10,7 @@ mergeFile
 
 #File generated in BigQ with sorted runs
 temp 
+
+.vscode/
+
+test.out
