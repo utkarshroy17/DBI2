@@ -1,6 +1,7 @@
 #include "RelOp.h"
 #include <pthread.h>
 #include <iostream>
+#include <string>
 
 // Select file implementation
 void *SelectFile::ReadFromDBFile(void *args) {
@@ -153,7 +154,49 @@ void SelectPipe::Use_n_Pages(int runlen) {
 // Sum implementation
 void *Sum::ComputeSum(void *args)
 {
-	thread_utils *s = new thread_utils;
+	thread_utils *s = (thread_utils *)args;
+	Schema *testSchema = new Schema("catalog", "supplier");
+	Record temp;
+	int intSum = 0, intParam = 0;
+	double dblSum = 0, dblParam = 0;
+	Type resType;
+
+	string rec;
+	Record finalRec;
+
+	while (s->inPipe->Remove(&temp)) {
+
+		resType = s->computeMe.Apply(temp, intParam, dblParam);
+
+		if (resType == Int)
+			intSum += intParam;
+		else if (resType == Double)
+			dblSum += dblParam;
+	}
+
+	if (resType == Int) {
+
+		rec = to_string(intSum);
+		rec.append("|");
+
+		Attribute IA = { "int", Int };
+		Schema out_schema("out_sch", 1, &IA);
+		finalRec.ComposeRecord(&out_schema, rec.c_str());
+	}
+	else if (resType == Double) {
+		rec = to_string(dblSum);
+		rec.append("|");
+
+		Attribute DA = { "double", Double };
+		Schema out_schema("out_sch", 1, &DA);
+		finalRec.ComposeRecord(&out_schema, rec.c_str());
+	}
+
+	cout << "double sum = " << dblSum << endl;
+	cout << "int sum = " << intSum << endl;
+
+	s->outPipe->Insert(&finalRec);
+	s->outPipe->ShutDown();
 
 }
 
