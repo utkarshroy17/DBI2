@@ -114,14 +114,16 @@ void q1 () {
 // expected output: 22 records
 void q2 () {
 
+	cout << "q2 \n";
+
 	char *pred_p = "(p_retailprice > 931.01) AND (p_retailprice < 931.3)";
 	init_SF_p (pred_p, 100);
 
 	Project P_p;
-		Pipe _out (pipesz);
-		int keepMe[] = {0,1,7};
-		int numAttsIn = pAtts;
-		int numAttsOut = 3;
+	Pipe _out (pipesz);
+	int keepMe[] = {0,1,7};
+	int numAttsIn = pAtts;
+	int numAttsOut = 3;
 	P_p.Use_n_Pages (buffsz);
 
 	SF_p.Run (dbf_p, _p, cnf_p, lit_p);
@@ -132,7 +134,8 @@ void q2 () {
 
 	Attribute att3[] = {IA, SA, DA};
 	Schema out_sch ("out_sch", numAttsOut, att3);
-	int cnt = clear_pipe (_p, p->schema (), true);
+	// int cnt = clear_pipe (_out, p->schema (), true);
+	int cnt = clear_pipe (_out, &out_sch, true);
 
 	cout << "\n\n query2 returned " << cnt << " records \n";
 
