@@ -15,7 +15,7 @@ void *SelectFile::ReadFromDBFile(void *args) {
 
 	cout << "moved to first" << endl;
 	
-	sf->selOperator.Print();
+	// sf->selOperator.Print();
 
 	while (sf->inFile.GetNext(temp)) {
 
@@ -29,8 +29,7 @@ void *SelectFile::ReadFromDBFile(void *args) {
 
 
 void SelectFile::Run (DBFile &inFile, Pipe &outPipe, CNF &selOp, Record &literal) {
-	
-	selOp.Print();
+	// selOp.Print();
 
 	//thread_utils args = { inFile, &outPipe, selOp, literal };
 	thread_utils *args = new thread_utils;
@@ -52,7 +51,61 @@ void SelectFile::Use_n_Pages (int runlen) {
 	runLength = runlen;
 }
 
-// Select Pipe implementation
+/*
+	PROJECT
+*/
+struct ProjectUtil{
+	Pipe *inPipe;
+	Pipe *outPipe;
+	int *keepMe;
+	int numAttsInput;
+	int numAttsOutput;
+	ProjectUtil(Pipe *i, Pipe *o, int *k, int nI, int nO){
+		inPipe = i;
+		outPipe = o;
+		keepMe = k;
+		numAttsInput = nI;
+		numAttsOutput = nO;
+	}
+	~ProjectUtil();
+};
+
+void *projectWorker(void *args){
+	ProjectUtil* pU = (ProjectUtil*)args;
+	Record rec;
+	int cnt = 0;
+	Schema *testSchema = new Schema("catalog", "part");
+	while (pU->inPipe->Remove (&rec)) {
+		// rec.Print (testSchema);
+		cnt++;
+		rec.Project(pU->keepMe, pU->numAttsOutput, pU->numAttsInput);
+		pU->outPipe->Insert(&rec);
+	}
+	cout << "Count is " << cnt;
+	pU->outPipe->ShutDown();
+}
+
+void Project::Run(Pipe &inPipe, Pipe &outPipe, int *keepMe, int numAttsInput, int numAttsOutput) { 
+	Pipe* temp = &outPipe;
+	// temp->ShutDown();
+	(&outPipe)->ShutDown();
+	cout << "Inside Project run";
+	ProjectUtil* pU = new ProjectUtil(&inPipe, &outPipe, keepMe, numAttsInput, numAttsOutput);
+	pthread_create(&thread, NULL, projectWorker, (void *)pU);
+}
+
+void Project::WaitUntilDone () {
+	// pthread_join (thread, NULL);
+}
+
+void Project::Use_n_Pages(int n){
+	runLength = n;
+}
+
+
+/*
+Select Pipe implementation
+*/
 void *SelectPipe::ReadFromPipe(void *args) {
 
 	thread_utils *sf = (thread_utils *)args;
