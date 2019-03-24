@@ -125,7 +125,7 @@ void get_cnf (char *input, Schema *left, CNF &cnf_pred, Record &literal) {
 		cout << " Error: can't parse your CNF " << input << endl;
 		exit (1);
 	}
-	cnf_pred.GrowFromParseTree (final, left, literal); // constructs CNF predicate
+	cnf_pred.GrowFromParseTree (final, left, literal); // constructs CNF predicate	
 	close_lexical_parser ();
 }
 
