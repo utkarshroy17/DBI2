@@ -8,11 +8,10 @@ void *SelectFile::ReadFromDBFile(void *args) {
 	thread_utils *sf = (thread_utils *)args;
 	ComparisonEngine ceng;
 	Record temp;
-	Schema *testSchema = new Schema("catalog", "partsupp");
+	Schema *testSchema = new Schema("catalog", "supplier");
 
 	cout << "inside thread exec" << endl;
-	sf->inFile.MoveFirst();
-
+	sf->inFile.MoveFirst();	
 	cout << "moved to first" << endl;
 	
 	sf->selOperator.Print();
@@ -20,16 +19,19 @@ void *SelectFile::ReadFromDBFile(void *args) {
 	while (sf->inFile.GetNext(temp)) {
 
 		if (ceng.Compare(&temp, &sf->literal, &sf->selOperator)) {	
+			temp.Print(testSchema);
 			sf->outPipe->Insert(&temp);
 		}
 	}
 
+	cout << "select file -- ";
 	sf->outPipe->ShutDown();
 }
 
 
 void SelectFile::Run (DBFile &inFile, Pipe &outPipe, CNF &selOp, Record &literal) {
 	
+	cout << "inside SF run" << endl;
 	selOp.Print();
 
 	//thread_utils args = { inFile, &outPipe, selOp, literal };
@@ -101,6 +103,16 @@ void SelectPipe::Use_n_Pages(int runlen) {
 void *Sum::ComputeSum(void *args)
 {
 	thread_utils *s = new thread_utils;
+	Schema *testSchema = new Schema("catalog", "partsupp");
+	Record temp;
+
+	/*while (s->inPipe->Remove(&temp)) {
+		temp.Print(testSchema);
+	}*/
+
+	//s->inPipe->ShutDown();
+	cout << "sum -- ";
+	//s->outPipe->ShutDown();
 
 }
 

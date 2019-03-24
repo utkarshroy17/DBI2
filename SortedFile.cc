@@ -431,6 +431,7 @@ int SortedFile::Open(char *f_path) {
 void SortedFile::MoveFirst() {
 
 	//Move the pointer to the first record in the file
+	cout << "inside sorted movefirst" << endl;
 	pageIndex = 0;
 
 	if (m == READ) {

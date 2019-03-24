@@ -123,6 +123,7 @@ void DBFile::Add(Record &rec) {
 }
 
 void DBFile::MoveFirst() {
+	cout << "calling sorted movefirst" << endl;
 	internalVar->MoveFirst();
 }
 
