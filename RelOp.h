@@ -73,10 +73,18 @@ public:
 };
 class DuplicateRemoval : public RelationalOp {
 
+private:
+	pthread_t thread;
+	int runLength;
+	Pipe *inPipe;
+	Pipe *outPipe;
+	Schema *mySchema;
+
 public:
-	void Run(Pipe &inPipe, Pipe &outPipe, Schema &mySchema) { }
-	void WaitUntilDone() { }
-	void Use_n_Pages(int n) { }
+	void Run(Pipe &inPipe, Pipe &outPipe, Schema &mySchema);
+	void WaitUntilDone();
+	void Use_n_Pages(int n);
+	static void *DupRemovalThread(void *args);
 };
 class Sum : public RelationalOp {
 
@@ -97,9 +105,17 @@ class GroupBy : public RelationalOp {
 	void Use_n_Pages (int n) { }
 };
 class WriteOut : public RelationalOp {
-	public:
-	void Run (Pipe &inPipe, FILE *outFile, Schema &mySchema) { }
-	void WaitUntilDone () { }
-	void Use_n_Pages (int n) { }
+
+private:
+	int runLength;
+	pthread_t thread;
+	Pipe *inPipe;
+	Schema *mySchema;
+	FILE *outFile;
+
+public:
+	void Run (Pipe &inPipe, FILE *outFile, Schema &mySchema);
+	void WaitUntilDone();
+	void Use_n_Pages(int n);
 };
 #endif

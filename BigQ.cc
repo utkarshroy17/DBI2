@@ -177,6 +177,7 @@ BigQ :: BigQ (Pipe &in, Pipe &out, OrderMaker &sortorder, int runlen) {
 
 	cout << "Worker Thread Created BigQ.cc \n";
 
+	pthread_join(worker, NULL);
   // construct priority queue over sorted runs and dump sorted data into the out pipe
   // finally shut down the out pipe
 	

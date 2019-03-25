@@ -1,4 +1,5 @@
 #include "RelOp.h"
+#include "BigQ.h"
 #include <pthread.h>
 #include <iostream>
 #include <string>
@@ -21,6 +22,7 @@ void *SelectFile::ReadFromDBFile(void *args) {
 	while (sf->inFile.GetNext(temp)) {
 
 		if (ceng.Compare(&temp, &sf->literal, &sf->selOperator)) {	
+			//temp.Print(testSchema);
 			sf->outPipe->Insert(&temp);
 		}
 	}
@@ -217,4 +219,92 @@ void Sum::WaitUntilDone() {
 
 void Sum::Use_n_Pages(int runlen) {
 	runLength = runlen;
+}
+
+// Duplicate Removal Implementation
+
+void *DuplicateRemoval::DupRemovalThread(void *args) {
+
+	DuplicateRemoval *dr = (DuplicateRemoval *)args;
+	Schema *testSchema = new Schema("catalog", "partsupp");
+
+	OrderMaker *sortorder = new OrderMaker(dr->mySchema);
+
+	Pipe sortedPipe(100);
+	BigQ(*dr->inPipe, sortedPipe, *sortorder, dr->runLength);
+	ComparisonEngine ceng;
+
+	int count = 0;
+
+	Record *temp = new Record();
+	Record *prev = new Record();
+	Record *toBeInserted;
+
+	cout << "Remove from sorted file" << endl;
+
+	if (sortedPipe.Remove(prev)) {
+		toBeInserted = new Record();
+		toBeInserted->Copy(prev);
+		dr->outPipe->Insert(toBeInserted);
+	}
+
+	while (sortedPipe.Remove(temp)) {
+		
+		if (ceng.Compare(temp, prev, sortorder) != 0) {
+			
+			Record *toBeInserted = new Record();
+			toBeInserted->Copy(temp);
+			dr->outPipe->Insert(toBeInserted);
+			count++;
+		}	
+		//temp.Print(testSchema);
+		
+		prev->Copy(temp);
+	}
+
+	cout << "Count of distinct recs = " << count << endl;
+
+	delete temp;
+	delete prev;
+	delete toBeInserted;
+	dr->outPipe->ShutDown();
+}
+
+void DuplicateRemoval::Run(Pipe &inPipe, Pipe &outPipe, Schema &mySchema) {
+
+	//thread_utils *args = new thread_utils;
+	cout << "inside duplicate removal" << endl;
+	
+	this->inPipe = &inPipe;
+	this->outPipe = &outPipe;
+	this->mySchema = &mySchema;
+
+	pthread_create(&thread, NULL, DupRemovalThread, this);
+}
+
+void DuplicateRemoval::WaitUntilDone() {
+	pthread_join(thread, NULL);
+}
+
+void DuplicateRemoval::Use_n_Pages(int runlen) {
+	this->runLength = runlen;
+}
+
+// Writeout implementation
+
+void WriteOut::Run(Pipe &inPipe, FILE *outFile, Schema &mySchema) {
+
+	this->inPipe = &inPipe;
+	this->mySchema = &mySchema;
+	this->outFile = outFile;
+
+
+}
+
+void WriteOut::WaitUntilDone() {
+	pthread_join(thread, NULL);
+}
+
+void WriteOut::Use_n_Pages(int runlen) {
+	this->runLength = runlen;
 }
