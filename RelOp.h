@@ -29,7 +29,7 @@ class SelectFile : public RelationalOp {
 
 private:
 	pthread_t thread;
-	Record *buffer;
+	//Record *buffer;
 	int runLength;
 
 public:
@@ -43,7 +43,7 @@ public:
 
 class SelectPipe : public RelationalOp {
 	pthread_t thread;
-	Record *buffer;
+	//Record *buffer;
 	int runLength;
 
 public:
@@ -99,10 +99,20 @@ public:
 	static void *ComputeSum(void *args);
 };
 class GroupBy : public RelationalOp {
-	public:
-	void Run (Pipe &inPipe, Pipe &outPipe, OrderMaker &groupAtts, Function &computeMe) { }
-	void WaitUntilDone () { }
-	void Use_n_Pages (int n) { }
+
+private:
+	int runLength;
+	pthread_t thread;
+	Pipe *inPipe;
+	Pipe *outPipe;
+	OrderMaker *groupAtts;
+	Function computeMe;
+
+public:
+	void Run(Pipe &inPipe, Pipe &outPipe, OrderMaker &groupAtts, Function &computeMe);
+	void WaitUntilDone();
+	void Use_n_Pages(int n);
+	static void *GroupByThread(void *args);
 };
 class WriteOut : public RelationalOp {
 
@@ -117,5 +127,6 @@ public:
 	void Run (Pipe &inPipe, FILE *outFile, Schema &mySchema);
 	void WaitUntilDone();
 	void Use_n_Pages(int n);
+	static void *WriteToFile(void *args);
 };
 #endif

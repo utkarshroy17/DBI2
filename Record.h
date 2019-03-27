@@ -69,6 +69,9 @@ char *bits;
 	// prints the contents of the record; this requires
 	// that the schema also be given so that the record can be interpreted
 	void Print (Schema *mySchema);
+
+	//Write out records to the file according to the schema provided
+	void WriteRecord(Schema *mySchema, FILE *outFile);
 };
 
 #endif
