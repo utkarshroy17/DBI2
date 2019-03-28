@@ -118,9 +118,7 @@ void createRuns(Util *tu) {
 	char *region = "partsupp";
 	char *catalog_path = "catalog";
 	Schema *testSchema = new Schema(catalog_path, region);	//TODO: this is hardcoded to religion. Change it
-
 	while (tu->inPipe->Remove(getRec)) {
-		// cout << "Called tu->inPipe->Remove createRuns, BiqQ.cc \n";
 		 //getRec->Print(testSchema);
 
 		tempRecord = new Record;
@@ -142,7 +140,6 @@ void createRuns(Util *tu) {
 			}
 		}
 	}
-
 	if (recVector.size() > 0) {
 		sort(recVector.begin(), recVector.end(), compRecs);
 		addRunToFile(recVector, PageNumber);

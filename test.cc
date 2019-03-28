@@ -2,6 +2,7 @@
 #include "BigQ.h"
 #include "RelOp.h"
 #include <pthread.h>
+#include "BigQ.h"
 
 Attribute IA = {"int", Int};
 Attribute SA = {"string", String};
@@ -179,6 +180,7 @@ void q4 () {
 
 	cout << " query4 \n";
 	char *pred_s = "(s_suppkey = s_suppkey)";
+	Schema *testSchema = new Schema("catalog", "supplier");
 	init_SF_s (pred_s, 100);
 	SF_s.Run (dbf_s, _s, cnf_s, lit_s); // 10k recs qualified
 

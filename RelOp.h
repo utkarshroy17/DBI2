@@ -65,11 +65,11 @@ public:
 
 
 class Join : public RelationalOp { 
-
+pthread_t thread;
 public:
-	void Run(Pipe &inPipeL, Pipe &inPipeR, Pipe &outPipe, CNF &selOp, Record &literal) { }
-	void WaitUntilDone() { }
-	void Use_n_Pages(int n) { }
+	void Run(Pipe &inPipeL, Pipe &inPipeR, Pipe &outPipe, CNF &selOp, Record &literal);
+	void WaitUntilDone();
+	void Use_n_Pages(int n){}
 };
 class DuplicateRemoval : public RelationalOp {
 
