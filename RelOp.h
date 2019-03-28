@@ -29,7 +29,7 @@ class SelectFile : public RelationalOp {
 
 private:
 	pthread_t thread;
-	Record *buffer;
+	//Record *buffer;
 	int runLength;
 
 public:
@@ -43,7 +43,7 @@ public:
 
 class SelectPipe : public RelationalOp {
 	pthread_t thread;
-	Record *buffer;
+	//Record *buffer;
 	int runLength;
 
 public:
@@ -73,10 +73,18 @@ public:
 };
 class DuplicateRemoval : public RelationalOp {
 
+private:
+	pthread_t thread;
+	int runLength;
+	Pipe *inPipe;
+	Pipe *outPipe;
+	Schema *mySchema;
+
 public:
-	void Run(Pipe &inPipe, Pipe &outPipe, Schema &mySchema) { }
-	void WaitUntilDone() { }
-	void Use_n_Pages(int n) { }
+	void Run(Pipe &inPipe, Pipe &outPipe, Schema &mySchema);
+	void WaitUntilDone();
+	void Use_n_Pages(int n);
+	static void *DupRemovalThread(void *args);
 };
 class Sum : public RelationalOp {
 
@@ -91,15 +99,34 @@ public:
 	static void *ComputeSum(void *args);
 };
 class GroupBy : public RelationalOp {
-	public:
-	void Run (Pipe &inPipe, Pipe &outPipe, OrderMaker &groupAtts, Function &computeMe) { }
-	void WaitUntilDone () { }
-	void Use_n_Pages (int n) { }
+
+private:
+	int runLength;
+	pthread_t thread;
+	Pipe *inPipe;
+	Pipe *outPipe;
+	OrderMaker *groupAtts;
+	Function computeMe;
+
+public:
+	void Run(Pipe &inPipe, Pipe &outPipe, OrderMaker &groupAtts, Function &computeMe);
+	void WaitUntilDone();
+	void Use_n_Pages(int n);
+	static void *GroupByThread(void *args);
 };
 class WriteOut : public RelationalOp {
-	public:
-	void Run (Pipe &inPipe, FILE *outFile, Schema &mySchema) { }
-	void WaitUntilDone () { }
-	void Use_n_Pages (int n) { }
+
+private:
+	int runLength;
+	pthread_t thread;
+	Pipe *inPipe;
+	Schema *mySchema;
+	FILE *outFile;
+
+public:
+	void Run (Pipe &inPipe, FILE *outFile, Schema &mySchema);
+	void WaitUntilDone();
+	void Use_n_Pages(int n);
+	static void *WriteToFile(void *args);
 };
 #endif
