@@ -2,6 +2,8 @@
 #include <pthread.h>
 #include <iostream>
 #include <string>
+#include "BigQ.h"
+#include "DBFile.h"
 
 // Select file implementation
 void *SelectFile::ReadFromDBFile(void *args) {
@@ -11,10 +13,8 @@ void *SelectFile::ReadFromDBFile(void *args) {
 	Record temp;
 	Schema *testSchema = new Schema("catalog", "partsupp");
 
-	cout << "inside thread exec" << endl;
 	sf->inFile.MoveFirst();
 
-	cout << "moved to first" << endl;
 	
 	// sf->selOperator.Print();
 
@@ -88,8 +88,7 @@ void *projectWorker(void *args){
 
 void Project::Run(Pipe &inPipe, Pipe &outPipe, int *keepMe, int numAttsInput, int numAttsOutput) { 
 	Pipe* temp = &outPipe;
-	// temp->ShutDown();
-	(&outPipe)->ShutDown();
+	// (&outPipe)->ShutDown();
 	cout << "Inside Project run";
 	ProjectUtil* pU = new ProjectUtil(&inPipe, &outPipe, keepMe, numAttsInput, numAttsOutput);
 	pthread_create(&thread, NULL, projectWorker, (void *)pU);
@@ -218,3 +217,82 @@ void Sum::WaitUntilDone() {
 void Sum::Use_n_Pages(int runlen) {
 	runLength = runlen;
 }
+
+
+/*
+	JOIN 
+*/
+struct JoinUtil{
+	Pipe *inPipeL;
+	Pipe *inPipeR;
+	Pipe *outPipe;
+	CNF *selOp;
+	Record *literal;
+	JoinUtil(Pipe *iL, Pipe *iR, Pipe *o, CNF *s, Record *l){
+		inPipeL = iL;
+		inPipeR = iR;
+		outPipe = o;
+		selOp = s;
+		literal = l;
+	}
+	~JoinUtil();
+};
+
+void getJoinAttsToKeep(int *attsToKeep, int numAttsL, int numAttsR){
+	for(int i=0; i<numAttsL; i++){
+		attsToKeep[i] = i;
+	}
+	for(int i=0; i<numAttsR; i++){
+		attsToKeep[i + numAttsL] = i;
+	}
+}
+
+void *joinWorker(void *args){
+
+	JoinUtil* jU = (JoinUtil*)args;
+	Record* lr = new Record();
+	Record* rr = new Record();
+	Record* jr = new Record();
+	Pipe* outPipeL = new Pipe(100);
+	OrderMaker *sortorder = new OrderMaker();
+
+	DBFile dbfile;
+	dbfile.Create("jointemp", heap, NULL);
+	while(jU->inPipeR->Remove(rr)){
+		dbfile.Add(*rr);
+	}
+	dbfile.Close();
+
+	jU->inPipeL->Remove(lr);
+	dbfile.GetNext(*rr);
+
+	int numAttsL = numAttsL = ((int *) lr->bits)[1] / sizeof(int) -1;
+	int numAttsR = ((int *) rr->bits)[1] / sizeof(int) -1;
+	int attsToKeep[numAttsL + numAttsR];
+	getJoinAttsToKeep(attsToKeep, numAttsL, numAttsR);
+
+	ComparisonEngine ceng;
+
+	do{
+		dbfile.Open("jointemp");
+		dbfile.MoveFirst();
+		do{
+			if (ceng.Compare(lr, rr, jU->literal, jU->selOp)) {	
+				jr->MergeRecords(lr, rr, numAttsL, numAttsR, attsToKeep, numAttsL + numAttsR, numAttsL);
+				jU->outPipe->Insert(jr);
+			}
+		}while(dbfile.GetNext(*rr));
+		dbfile.Close();
+	}while (jU->inPipeL->Remove(lr));
+	jU->outPipe->ShutDown();
+}
+
+void Join::Run(Pipe &inPipeL, Pipe &inPipeR, Pipe &outPipe, CNF &selOp, Record &literal) { 
+	JoinUtil* jU = new JoinUtil(&inPipeL, &inPipeR, &outPipe, &selOp, &literal);
+	pthread_create(&thread, NULL, joinWorker, (void *)jU);	
+}
+
+void Join::WaitUntilDone () {
+	pthread_join (thread, NULL);
+}
+
