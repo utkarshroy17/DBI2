@@ -1,16 +1,25 @@
-#Object files
+#Generated files
 *.o
+*.out
+y.tab.*
+yyfunc.tab.*
+lex.yy.*
+lex.yyfunc*
 
 #DBFiles
 *.bin
-
-.vs/
-mergeFile
 *.bin.header
 
+#temp files
+mergeFile
 #File generated in BigQ with sorted runs
 temp 
 
+.vs/
 .vscode/
 
-test.out
+
+
+
+
+
