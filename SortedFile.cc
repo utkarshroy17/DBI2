@@ -480,7 +480,7 @@ void SortedFile::Add(Record &rec) {
 
 int SortedFile::GetNext(Record &fetchme) {
 
-		ChangeWriteToRead();
+	ChangeWriteToRead();
 
 	if (endOfFile == 1) return 0;
 

@@ -9,7 +9,7 @@ File tempFile;
 //TODO : Remove region and catalog path
 void mergeRuns(Util *tu) {
 
-	cout << "Calling Merge Runs \n";
+	//cout << "Calling Merge Runs \n";
 
 	vector<Page*> pageVector;
 	vector<Record*> recordVector;
@@ -34,9 +34,11 @@ void mergeRuns(Util *tu) {
 		recordVector.push_back(NULL);
 	
 	int count = 0;
+
+	cout << "page sizefor out "<< m << endl;
 		
 	while (pageVector.size() > 0) {
-				
+			
 		for (int j = 0; j < recordVector.size(); j++) {
 
 			Record *tempRec = new Record;
@@ -84,11 +86,14 @@ bool compRecs(Record *left, Record *right)
 		return false;
 }
 
-void addRunToFile(vector<Record*> recVector, int PageNumber) {
+void addRunToFile(vector<Record*> recVector, int &PageNumber) {
 	Record *curRec = NULL;
 	Page curPage;
+	//tempFile.GetPage(&curPage, PageNumber);
 	int isPageEmpty;
+	bool lastRec;
 	for (int j = 0; j < recVector.size(); j++) {
+		//lastRec = false;
 		curRec = recVector[j];
 		isPageEmpty = curPage.Append(curRec);
 		if (!isPageEmpty) {
@@ -96,10 +101,13 @@ void addRunToFile(vector<Record*> recVector, int PageNumber) {
 			curPage.EmptyItOut();
 			curPage.Append(curRec);
 			PageNumber++;
+			cout << "number of records added " << j << endl;
+			//lastRec = true;
 		}
 	}
 	tempFile.AddPage(&curPage, PageNumber);
-	PageNumber++;
+	PageNumber++;	
+	cout << "page number " << PageNumber << endl;
 }
 
 
@@ -114,24 +122,24 @@ void createRuns(Util *tu) {
 	tempFile.Open(0, "temp");
 	vector<Record*> recVector;
 	int PageNumber = 0;
+	int count = 0;
 
 	char *region = "partsupp";
 	char *catalog_path = "catalog";
 	Schema *testSchema = new Schema(catalog_path, region);	//TODO: this is hardcoded to religion. Change it
 	while (tu->inPipe->Remove(getRec)) {
 		 //getRec->Print(testSchema);
+		count++;
 
-		tempRecord = new Record;
-		tempRecord->Copy(getRec);
-		recVector.push_back(tempRecord);
 		recInsert = new Record;
-		recInsert->Copy(recVector.back());
+		recInsert->Copy(getRec);
 		isPageEmpty = tempPage.Append(recInsert);
 
 		if (isPageEmpty == 0) {
 			tempPage.EmptyItOut();
 			tempPage.Append(recInsert);
 			numPages++;
+			cout << "recvector size in create runs " << recVector.size() << endl;
 			if (numPages == tu->runLen) {
 				sort(recVector.begin(), recVector.end(), compRecs);
 				addRunToFile(recVector, PageNumber);
@@ -139,6 +147,11 @@ void createRuns(Util *tu) {
 				recVector.clear();
 			}
 		}
+
+		tempRecord = new Record;
+		tempRecord->Copy(getRec);
+		recVector.push_back(tempRecord);
+		
 	}
 	if (recVector.size() > 0) {
 		sort(recVector.begin(), recVector.end(), compRecs);
@@ -148,8 +161,8 @@ void createRuns(Util *tu) {
 		numRuns++;
 	}
 
+	cout << "count in inpipe " << count << endl;
 	tempFile.Close();
-	cout << "Done with createRuns \n";
 }
 
 
@@ -157,6 +170,8 @@ void *workerRoutine(void *arg){
 	Util* tu = (Util*)arg;
 	createRuns(tu);
 	mergeRuns(tu);
+
+	cout << "shutting down bigq" << endl;
 	tu->outPipe->ShutDown();
 }
 

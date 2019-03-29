@@ -298,7 +298,7 @@ void q6 () {
 
 	SF_ps.Run (dbf_ps, _ps, cnf_ps, lit_ps); // 161 recs qualified
 	J.Run (_s, _ps, _s_ps, cnf_p_ps, lit_p_ps);
-	G.Run (_s_ps, _out, grp_order, func);
+	G.Run (_s_ps, _out, grp_order, func, join_sch);
 
 	SF_ps.WaitUntilDone ();
 	J.WaitUntilDone ();

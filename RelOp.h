@@ -107,9 +107,10 @@ private:
 	Pipe *outPipe;
 	OrderMaker *groupAtts;
 	Function computeMe;
+	Schema *grpSchema;
 
 public:
-	void Run(Pipe &inPipe, Pipe &outPipe, OrderMaker &groupAtts, Function &computeMe);
+	void Run(Pipe &inPipe, Pipe &outPipe, OrderMaker &groupAtts, Function &computeMe, Schema &grpSchema);
 	void WaitUntilDone();
 	void Use_n_Pages(int n);
 	static void *GroupByThread(void *args);
