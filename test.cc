@@ -226,7 +226,7 @@ void q4 () {
 // expected output: 9996 rows
 void q5 () {
 
-	char *pred_ps = "(ps_supplycost < 100.11)";
+	char *pred_ps = "(ps_supplycost < 1000.11)";
 	init_SF_ps (pred_ps, 100);
 
 	Project P_ps;
@@ -306,7 +306,7 @@ void q6 () {
 
 	Schema sum_sch ("sum_sch", 1, &DA);
 	int cnt = clear_pipe (_out, &sum_sch, true);
-	cout << " query6 returned sum for " << cnt << " groups (expected 25 groups)\n"; 
+	cout << " query6 returned sum for " << cnt << " groups (expected 25 groups)\n";
 }
 
 void q7 () { 

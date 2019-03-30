@@ -10,7 +10,7 @@
 
 // Helper function
 
-void GetSumRec(Record &finalRec, Type resType, int intSum, double dblSum) {
+void GetSumRec(Record *finalRec, Type resType, int intSum, double dblSum) {
 
 	string rec;
 
@@ -21,7 +21,7 @@ void GetSumRec(Record &finalRec, Type resType, int intSum, double dblSum) {
 
 		Attribute IA = { "int", Int };
 		Schema out_schema("out_sch", 1, &IA);
-		finalRec.ComposeRecord(&out_schema, rec.c_str());
+		finalRec->ComposeRecord(&out_schema, rec.c_str());
 	}
 	else if (resType == Double) {
 		rec = to_string(dblSum);
@@ -29,7 +29,7 @@ void GetSumRec(Record &finalRec, Type resType, int intSum, double dblSum) {
 
 		Attribute DA = { "double", Double };
 		Schema out_schema("out_sch", 1, &DA);
-		finalRec.ComposeRecord(&out_schema, rec.c_str());
+		finalRec->ComposeRecord(&out_schema, rec.c_str());
 	}
 }
 
@@ -192,7 +192,7 @@ void *Sum::ComputeSum(void *args)
 	Type resType;
 
 	string rec;
-	Record finalRec;
+	Record *finalRec = new Record();
 
 	while (s->inPipe->Remove(temp)) {
 
@@ -204,30 +204,12 @@ void *Sum::ComputeSum(void *args)
 			dblSum += dblParam;
 	}
 
-	/*if (resType == Int) {
-
-		rec = to_string(intSum);
-		rec.append("|");
-
-		Attribute IA = { "int", Int };
-		Schema out_schema("out_sch", 1, &IA);
-		finalRec.ComposeRecord(&out_schema, rec.c_str());
-	}
-	else if (resType == Double) {
-		rec = to_string(dblSum);
-		rec.append("|");
-
-		Attribute DA = { "double", Double };
-		Schema out_schema("out_sch", 1, &DA);
-		finalRec.ComposeRecord(&out_schema, rec.c_str());
-	}*/
-
 	GetSumRec(finalRec, resType, intSum, dblSum);
 
 	cout << "double sum = " << dblSum << endl;
 	cout << "int sum = " << intSum << endl;
 
-	s->outPipe->Insert(&finalRec);
+	s->outPipe->Insert(finalRec);
 	s->outPipe->ShutDown();
 
 }
@@ -375,11 +357,26 @@ void *GroupBy::GroupByThread(void *args) {
 	Type resType;
 	//Record *finalRec = new Record();
 
+	/*Record *temp1 = new Record(), *temp2 = new Record();
+
+	gb->inPipe->Remove(temp1);
+	gb->inPipe->Remove(temp2);
+
+	cout << "num atts" << gb->groupAtts->GetNumAtts() << endl;
+
+	cout << "temp1 - ";	
+	temp1->Print(gb->grpSchema);
+	cout << "temp2 - ";
+	temp2->Print(gb->grpSchema);
+
+	int comp = ceng.Compare(temp2, temp1, gb->groupAtts);
+	cout << "comparison - " << comp << endl;*/
+
 	cout << "Inside group by thread" << endl;
 	Pipe sortedPipe(100);
 	BigQ bq(*gb->inPipe, sortedPipe, *gb->groupAtts, gb->runLength);
 
-	Record finalRec;
+	Record *finalRec = new Record();
 	int count = 0;
 	if (sortedPipe.Remove(prev)) {
 		
@@ -409,7 +406,10 @@ void *GroupBy::GroupByThread(void *args) {
 			//gb->outPipe->Insert(&finalRec);
 			
 			//cout << dblSum << endl;
-			//temp->Print(gb->grpSchema);
+			cout << "prev - ";
+			prev->Print(gb->grpSchema);
+			cout << "temp - ";
+			temp->Print(gb->grpSchema);
 
 			intSum = 0;
 			dblSum = 0;
@@ -427,7 +427,7 @@ void *GroupBy::GroupByThread(void *args) {
 		//temp->Print(gb->grpSchema);
 	}
 
-	cout << count << endl;
+	//cout << count << endl;
 	/*cout << "double sum - " << dblSum << endl;
 	finalRec = new Record();
 	GetSumRec(*finalRec, resType, intSum, dblSum);*/
