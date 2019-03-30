@@ -429,11 +429,11 @@ void Record :: Print (Schema *mySchema) {
 	// loop through all of the attributes
 	for (int i = 0; i < n; i++) {
 
-		if (atts[i].name[0] == 'i' && atts[i].name[1] == 'n' && atts[i].name[2] == 't')
+		/*if (atts[i].name[0] == 'i' && atts[i].name[1] == 'n' && atts[i].name[2] == 't')
 			continue;
 
 		if (atts[i].name[0] == 's' && atts[i].name[1] == 't' && atts[i].name[2] == 'r' && atts[i].name[3] == 'i' && atts[i].name[4] == 'n' && atts[i].name[5] == 'g')
-			continue;
+			continue;*/
 		// print the attribute name
 		cout << atts[i].name << ": ";
 
@@ -501,7 +501,7 @@ void Record::WriteRecord(Schema *mySchema, FILE *outFile) {
 			int *myInt = (int *) &(bits[pointer]);
 			//cout << *myInt;
 			
-			fwrite(myInt, sizeof(myInt), 1, outFile);
+			fprintf(outFile, "%d", *myInt);
 		}
 		// then is a double
 		else if (atts[i].myType == Double) {

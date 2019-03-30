@@ -106,7 +106,7 @@ private:
 	Pipe *inPipe;
 	Pipe *outPipe;
 	OrderMaker *groupAtts;
-	Function computeMe;
+	Function *computeMe;
 	Schema *grpSchema;
 
 public:

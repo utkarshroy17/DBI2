@@ -346,42 +346,48 @@ void WriteOut::Use_n_Pages(int runlen) {
 void *GroupBy::GroupByThread(void *args) {
 
 	GroupBy *gb = (GroupBy *)args;
+	
 	Record *temp = new Record(), *prev = new Record(), *toBeInserted;
 	ComparisonEngine ceng;
 	Schema *testSchema = new Schema("catalog", "partsupp");
-	/*map<Record*, vector<Record*>> groupTable;
-	map<Record*, vector<Record*>>::iterator it;*/	
 
 	int intParam = 0, intSum = 0;
 	double dblParam = 0, dblSum = 0;
-	Type resType;
-	//Record *finalRec = new Record();
+	Type resType;	
 
-	/*Record *temp1 = new Record(), *temp2 = new Record();
-
-	gb->inPipe->Remove(temp1);
-	gb->inPipe->Remove(temp2);
-
-	cout << "num atts" << gb->groupAtts->GetNumAtts() << endl;
-
-	cout << "temp1 - ";	
-	temp1->Print(gb->grpSchema);
-	cout << "temp2 - ";
-	temp2->Print(gb->grpSchema);
-
-	int comp = ceng.Compare(temp2, temp1, gb->groupAtts);
-	cout << "comparison - " << comp << endl;*/
+	OrderMaker *sortorder = new OrderMaker();
+	int whichAtts[] = { 3 };
+	Type whichTypes[] = { Int };
+	sortorder->Set(1, whichAtts, whichTypes);
 
 	cout << "Inside group by thread" << endl;
+
 	Pipe sortedPipe(100);
-	BigQ bq(*gb->inPipe, sortedPipe, *gb->groupAtts, gb->runLength);
+	BigQ bq(*gb->inPipe, sortedPipe, *sortorder, gb->runLength);
+
+	Attribute attr;
+	attr.name = (char *)"sum";
+	attr.myType = resType;
+	Schema *schema = new Schema((char *)"dummy", 1, &attr);
+
+	int numAttsToKeep = gb->groupAtts->numAtts + 1;
+	int *attsToKeep = new int[numAttsToKeep];
+	attsToKeep[0] = 0;  //for sumRec
+	cout << "[ 0";
+	for (int i = 1; i < numAttsToKeep; i++)
+	{
+		attsToKeep[i] = gb->groupAtts->whichAtts[i - 1];
+		cout << ", " << attsToKeep[i];
+	}
+	cout << "]" << endl;
 
 	Record *finalRec = new Record();
-	int count = 0;
+	int count = 0;	
+
 	if (sortedPipe.Remove(prev)) {
 		
 		cout << "sorted file first rec" << endl;
-		resType = gb->computeMe.Apply(*prev, intParam, dblParam);
+		resType = gb->computeMe->Apply(*prev, intParam, dblParam);
 
 		if (resType == Int)
 			intSum += intParam;
@@ -393,48 +399,51 @@ void *GroupBy::GroupByThread(void *args) {
 	while (sortedPipe.Remove(temp)) {
 
 		/*cout << "sorted file other recs" << endl;*/
-		if (ceng.Compare(temp, prev, gb->groupAtts) != 0) {
+		if (ceng.Compare(temp, prev, sortorder) != 0) {
 
-			//cout << "inside comparison" << endl;
+			cout << "inside comparison" << endl;
 
 			
 			GetSumRec(finalRec, resType, intSum, dblSum);
 
-			/*toBeInserted = new Record();
-			toBeInserted->Copy(finalRec);*/
+			Record *tuple = new Record;
+			tuple->MergeRecords(finalRec, prev, 1, gb->groupAtts->numAtts, attsToKeep, numAttsToKeep, 1);
 
-			//gb->outPipe->Insert(&finalRec);
+			//tuple->Print(&join_sch);
+
+			gb->outPipe->Insert(tuple);
 			
 			//cout << dblSum << endl;
-			cout << "prev - ";
+			/*cout << "prev - ";
 			prev->Print(gb->grpSchema);
 			cout << "temp - ";
-			temp->Print(gb->grpSchema);
+			temp->Print(gb->grpSchema);*/
 
 			intSum = 0;
 			dblSum = 0;
-			count++;
+			count++;			
 		}
 		
-		resType = gb->computeMe.Apply(*temp, intParam, dblParam);
+		resType = gb->computeMe->Apply(*temp, intParam, dblParam);
 
 		if (resType == Int)
 			intSum += intParam;
 		else if (resType == Double)
 			dblSum += dblParam;
-
-		prev->Copy(temp);
+		
 		//temp->Print(gb->grpSchema);
+		prev->Copy(temp);
 	}
 
-	//cout << count << endl;
-	/*cout << "double sum - " << dblSum << endl;
-	finalRec = new Record();
-	GetSumRec(*finalRec, resType, intSum, dblSum);*/
-	
-	/*toBeInserted = new Record();
-	toBeInserted->Copy(finalRec)*/;
-	//gb->outPipe->Insert(&finalRec);
+	cout << "final count - " << count << endl;
+	cout << "double sum - " << dblSum << endl;
+
+	GetSumRec(finalRec, resType, intSum, dblSum);
+		
+	Record *tuple = new Record;
+	tuple->MergeRecords(finalRec, prev, 1, gb->groupAtts->numAtts, attsToKeep, numAttsToKeep, 1);
+
+	gb->outPipe->Insert(tuple);
 
 	cout << "shutting group by" << endl;
 	gb->outPipe->ShutDown();
@@ -447,7 +456,7 @@ void GroupBy::Run(Pipe &inPipe, Pipe &outPipe, OrderMaker &groupAtts, Function &
 	this->inPipe = &inPipe;
 	this->outPipe = &outPipe;
 	this->groupAtts = &groupAtts;
-	this->computeMe = computeMe;
+	this->computeMe = &computeMe;
 	this->grpSchema = &grpSchema;
 
 	pthread_create(&thread, NULL, GroupByThread, this);

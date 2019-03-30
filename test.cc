@@ -283,12 +283,24 @@ void q6 () {
 	int outAtts = sAtts + psAtts;
 	Attribute s_nationkey = {"s_nationkey", Int};
 	Attribute ps_supplycost = {"ps_supplycost", Double};
-	Attribute joinatt[] = {IA,SA,SA,s_nationkey,SA,DA,SA,IA,IA,IA,ps_supplycost,SA};
+	Attribute joinatt[] = { IA,SA,SA,s_nationkey,SA,DA,SA,IA,IA,IA,ps_supplycost,SA };
 	Schema join_sch ("join_sch", outAtts, joinatt);
+
+	//Project P;
+		/*int keepMe[] = { 3 };
+		int numAtts = 12;
+		int numAttsOut = 1;
+		Pipe _p_out(100);*/
+	//P.Use_n_Pages(2);
+	
+	//p.WaitUntilDone();
+
+	/*Attribute att[] = { s_nationkey };
+	Schema out_sch("out_sch", 1, att);*/
 
 	GroupBy G;
 		// _s (input pipe)
-		Pipe _out (1);
+		Pipe _out (10000);
 		Function func;
 			char *str_sum = "(ps_supplycost)";
 			get_cnf (str_sum, &join_sch, func);
@@ -298,11 +310,14 @@ void q6 () {
 
 	SF_ps.Run (dbf_ps, _ps, cnf_ps, lit_ps); // 161 recs qualified
 	J.Run (_s, _ps, _s_ps, cnf_p_ps, lit_p_ps);
+	//P.Run(_s_ps, _p_out, keepMe, numAtts, numAttsOut);
 	G.Run (_s_ps, _out, grp_order, func, join_sch);
 
 	SF_ps.WaitUntilDone ();
 	J.WaitUntilDone ();
+	//P.WaitUntilDone();
 	G.WaitUntilDone ();
+
 
 	Schema sum_sch ("sum_sch", 1, &DA);
 	int cnt = clear_pipe (_out, &sum_sch, true);
