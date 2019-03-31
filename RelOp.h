@@ -110,7 +110,7 @@ private:
 	Schema *grpSchema;
 
 public:
-	void Run(Pipe &inPipe, Pipe &outPipe, OrderMaker &groupAtts, Function &computeMe, Schema &grpSchema);
+	void Run(Pipe &inPipe, Pipe &outPipe, OrderMaker &groupAtts, Function &computeMe);
 	void WaitUntilDone();
 	void Use_n_Pages(int n);
 	static void *GroupByThread(void *args);

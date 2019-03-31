@@ -103,8 +103,9 @@ int DBFile::Open(char *f_path) {
 
 	infile.close();
 
-	if (lines[0] == "sorted")
-		this->internalVar = new SortedFile();
+	if (lines[0] == "sorted") {
+		this->internalVar = new SortedFile();		
+	}		
 	else
 		this->internalVar = new HeapFile();
 

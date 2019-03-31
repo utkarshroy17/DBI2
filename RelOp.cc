@@ -42,7 +42,7 @@ void *SelectFile::ReadFromDBFile(void *args) {
 	Schema *testSchema = new Schema("catalog", "partsupp");
 
 	sf->inFile.MoveFirst();
-
+	int count = 0;
 	
 	// sf->selOperator.Print();
 
@@ -52,9 +52,10 @@ void *SelectFile::ReadFromDBFile(void *args) {
 			//temp.Print(testSchema);
 			sf->outPipe->Insert(temp);
 		}
+		count++;
 	}
 
-	cout << "shutting down select file" << endl;
+	cout << "shutting down select file " << count << endl;
 
 	sf->outPipe->ShutDown();
 }
@@ -450,14 +451,13 @@ void *GroupBy::GroupByThread(void *args) {
 
 }
 
-void GroupBy::Run(Pipe &inPipe, Pipe &outPipe, OrderMaker &groupAtts, Function &computeMe, Schema &grpSchema) {
+void GroupBy::Run(Pipe &inPipe, Pipe &outPipe, OrderMaker &groupAtts, Function &computeMe) {
 
 	cout << "Inside group by run" << endl;
 	this->inPipe = &inPipe;
 	this->outPipe = &outPipe;
 	this->groupAtts = &groupAtts;
 	this->computeMe = &computeMe;
-	this->grpSchema = &grpSchema;
 
 	pthread_create(&thread, NULL, GroupByThread, this);
 }
@@ -489,13 +489,17 @@ struct JoinUtil{
 	~JoinUtil();
 };
 
-void getJoinAttsToKeep(int *attsToKeep, int numAttsL, int numAttsR){
+int *getJoinAttsToKeep(int numAttsL, int numAttsR){
+
+	int *attsToKeep = new int[numAttsL+numAttsR];
 	for(int i=0; i<numAttsL; i++){
 		attsToKeep[i] = i;
 	}
 	for(int i=0; i<numAttsR; i++){
 		attsToKeep[i + numAttsL] = i;
 	}
+
+	return attsToKeep;
 }
 
 void *joinWorker(void *args){
@@ -510,27 +514,42 @@ void *joinWorker(void *args){
 	DBFile dbfile;
 	dbfile.Create("jointemp", heap, NULL);
 	int count = 0;
+	Schema *testSchema = new Schema("catalog", "partsupp");
 
 	while(jU->inPipeR->Remove(rr)){
 		dbfile.Add(*rr);
 		count++;
 	}
 
-	dbfile.Close();
+	cout << count << endl;
 
-	jU->inPipeL->Remove(lr);
-	dbfile.GetNext(*rr);
+	dbfile.Close();
+	
+	jU->inPipeL->Remove(lr);	
+
+	cout << "got next" << endl;
 
 	int numAttsL = ((int *) lr->bits)[1] / sizeof(int) -1;
-	int numAttsR = ((int *) rr->bits)[1] / sizeof(int) -1;
-	int attsToKeep[numAttsL + numAttsR];
-	getJoinAttsToKeep(attsToKeep, numAttsL, numAttsR);
+	//int numAttsR = ((int *) rr->bits)[1] / sizeof(int) -1;
+	int numAttsR = NULL;
+	int *attsToKeep;	
 
 	ComparisonEngine ceng;
+
+	/*cout << "print the recs" << endl;
+	while (dbfile.GetNext(*rr))
+	{
+		rr->Print(testSchema);
+	}*/
 
 	do{
 		dbfile.Open("jointemp");
 		dbfile.MoveFirst();
+		dbfile.GetNext(*rr);
+		if (numAttsR == NULL) {
+			numAttsR = ((int *)rr->bits)[1] / sizeof(int) - 1;
+			attsToKeep = getJoinAttsToKeep(numAttsL, numAttsR);
+		}			
 		do{
 			if (ceng.Compare(lr, rr, jU->literal, jU->selOp)) {	
 				jr->MergeRecords(lr, rr, numAttsL, numAttsR, attsToKeep, numAttsL + numAttsR, numAttsL);
