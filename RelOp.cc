@@ -49,7 +49,7 @@ void *SelectFile::ReadFromDBFile(void *args) {
 	while (sf->inFile.GetNext(*temp)) {
 
 		if (ceng.Compare(temp, &sf->literal, &sf->selOperator)) {	
-			//temp.Print(testSchema);
+			//temp->Print(testSchema);
 			sf->outPipe->Insert(temp);
 		}
 		count++;

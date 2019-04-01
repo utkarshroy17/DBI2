@@ -101,13 +101,11 @@ void addRunToFile(vector<Record*> recVector, int &PageNumber) {
 			curPage.EmptyItOut();
 			curPage.Append(curRec);
 			PageNumber++;
-			cout << "number of records added " << j << endl;
 			//lastRec = true;
 		}
 	}
 	tempFile.AddPage(&curPage, PageNumber);
 	PageNumber++;	
-	cout << "page number " << PageNumber << endl;
 }
 
 
@@ -139,7 +137,7 @@ void createRuns(Util *tu) {
 			tempPage.EmptyItOut();
 			tempPage.Append(recInsert);
 			numPages++;
-			cout << "recvector size in create runs " << recVector.size() << endl;
+			//cout << "recvector size in create runs " << recVector.size() << endl;
 			if (numPages == tu->runLen) {
 				sort(recVector.begin(), recVector.end(), compRecs);
 				addRunToFile(recVector, PageNumber);

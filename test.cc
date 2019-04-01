@@ -95,14 +95,14 @@ void init_SF_c (char *pred_str, int numpgs) {
 // expected output: 31 records
 void q1 () {
 
-	char *pred_ps = "(ps_supplycost < 10.03)";
+	char *pred_ps = "(ps_supplycost < 1.04)";
 	init_SF_ps (pred_ps, 100);
 
 	/*cout << "cnf -- ";*/
 	cnf_ps.Print();
 
 	SF_ps.Run (dbf_ps, _ps, cnf_ps, lit_ps);
-	SF_ps.WaitUntilDone ();
+	//SF_ps.WaitUntilDone ();
 
 	int cnt = clear_pipe (_ps, ps->schema (), true);
 	cout << "\n\n query1 returned " << cnt << " records \n";
@@ -117,7 +117,7 @@ void q2 () {
 
 	cout << "q2 \n";
 
-	char *pred_p = "(p_retailprice > 931.01) AND (p_retailprice < 931.3)";
+	char *pred_p = "(p_retailprice > 931.00) AND (p_retailprice < 931.31)";
 	init_SF_p (pred_p, 100);
 
 	Project P_p;
@@ -179,70 +179,53 @@ void q3 () {
 void q4 () {
 
 	cout << " query4 \n";
-	
 	char *pred_s = "(s_suppkey = s_suppkey)";
-	Schema *testSchema = new Schema("catalog", "supplier");
-	init_SF_s (pred_s, 100);	
-	
-	char *pred_ps = "(ps_suppkey = ps_suppkey)";
-	init_SF_ps (pred_ps, 100);
-
+	init_SF_s(pred_s, 100);
 	SF_s.Run(dbf_s, _s, cnf_s, lit_s); // 10k recs qualified
-	SF_ps.Run(dbf_ps, _ps, cnf_ps, lit_ps); // 161 recs qualified
-	
+
+	char *pred_ps = "(ps_suppkey = ps_suppkey)";
+	init_SF_ps(pred_ps, 100);
+
 	Join J;
-		// left _s
-		// right _ps
-		Pipe _s_ps (pipesz);
-		CNF cnf_p_ps;
-		Record lit_p_ps;
-		get_cnf ("(s_suppkey = ps_suppkey)", s->schema(), ps->schema(), cnf_p_ps, lit_p_ps);
+	// left _s
+	// right _ps
+	Pipe _s_ps(pipesz);
+	CNF cnf_p_ps;
+	Record lit_p_ps;
+	get_cnf("(s_suppkey = ps_suppkey)", s->schema(), ps->schema(), cnf_p_ps, lit_p_ps);
 
 	int outAtts = sAtts + psAtts;
-	Attribute ps_supplycost = {"ps_supplycost", Double};
-	Attribute joinatt[] = {IA,SA,SA,IA,SA,DA,SA, IA,IA,IA,ps_supplycost,SA};
-	Schema join_sch ("join_sch", outAtts, joinatt);
+	Attribute ps_supplycost = { "ps_supplycost", Double };
+	Attribute joinatt[] = { IA,SA,SA,IA,SA,DA,SA, IA,IA,IA,ps_supplycost,SA };
+	Schema join_sch("join_sch", outAtts, joinatt);
 
 	Sum T;
-		// _s (input pipe)
-		Pipe _out (1);
-		Function func;
-			char *str_sum = "(ps_supplycost)";
-			get_cnf (str_sum, &join_sch, func);
-			func.Print ();
-	T.Use_n_Pages (1);
-		
+	// _s (input pipe)
+	Pipe _out(1);
+	Function func;
+	char *str_sum = "(ps_supplycost)";
+	get_cnf(str_sum, &join_sch, func);
+	func.Print();
+	T.Use_n_Pages(1);
 
-	//Record *rr = new Record();
-	//int count1 = 0, count2= 0;
-	//while (_ps.Remove(rr)) {
-	//	//dbfile.Add(*rr);
-	//	count1++;
-	//}
-	//while (_s.Remove(rr)) {
-	//	//dbfile.Add(*rr);
-	//	count2++;
-	//}
-	//cout << "count for select file pipe - " << count1 << " " << count2 << endl;
+	SF_ps.Run(dbf_ps, _ps, cnf_ps, lit_ps); // 161 recs qualified
+	J.Run(_s, _ps, _s_ps, cnf_p_ps, lit_p_ps);
+	T.Run(_s_ps, _out, func);
 
-	J.Run (_s, _ps, _s_ps, cnf_p_ps, lit_p_ps);
-	T.Run (_s_ps, _out, func);
-
-	
 	SF_ps.WaitUntilDone();
-	J.WaitUntilDone ();
-	T.WaitUntilDone ();	
+	J.WaitUntilDone();
+	T.WaitUntilDone();
 
-	Schema sum_sch ("sum_sch", 1, &DA);
-	int cnt = clear_pipe (_out, &sum_sch, true);
-		cout << " query4 returned " << cnt << " recs \n";
+	Schema sum_sch("sum_sch", 1, &DA);
+	int cnt = clear_pipe(_out, &sum_sch, true);
+	cout << " query4 returned " << cnt << " recs \n";
 }
 
 // select distinct ps_suppkey from partsupp where ps_supplycost < 100.11;
 // expected output: 9996 rows
 void q5 () {
 
-	char *pred_ps = "(ps_supplycost < 1000.11)";
+	char *pred_ps = "(ps_supplycost < 100.11)";
 	init_SF_ps (pred_ps, 100);
 
 	Project P_ps;
@@ -282,14 +265,11 @@ void q6 () {
 
 	cout << " query6 \n";
 	char *pred_s = "(s_suppkey = s_suppkey)";
-	//init_SF_s (pred_s, 100);
-	
+	init_SF_s (pred_s, 100);
+	SF_s.Run(dbf_s, _s, cnf_s, lit_s); // 10k recs qualified
 
 	char *pred_ps = "(ps_suppkey = ps_suppkey)";
 	init_SF_ps (pred_ps, 100);
-
-	SF_ps.Run(dbf_ps, _ps, cnf_ps, lit_ps); // 161 recs qualified
-	//SF_s.Run(dbf_s, _s, cnf_s, lit_s); // 10k recs qualified	
 
 	Join J;
 		// left _s
@@ -315,29 +295,17 @@ void q6 () {
 			OrderMaker grp_order (&join_sch);
 	G.Use_n_Pages (1);
 
-
-	Record *rr = new Record();
-	int count1 = 0, count2= 0;
-	while (_ps.Remove(rr)) {
-		//dbfile.Add(*rr);
-		count1++;
-	}
-	while (_s.Remove(rr)) {
-		//dbfile.Add(*rr);
-		count2++;
-	}
-	cout << "count for select file pipe - " << count1 << " " << count2 << endl;
-	
-	/*J.Run (_s, _ps, _s_ps, cnf_p_ps, lit_p_ps);
-	G.Run (_s_ps, _out, grp_order, func);*/
+	SF_ps.Run(dbf_ps, _ps, cnf_ps, lit_ps); // 161 recs qualified
+	J.Run (_s, _ps, _s_ps, cnf_p_ps, lit_p_ps);
+	G.Run (_s_ps, _out, grp_order, func);
 
 	SF_ps.WaitUntilDone ();
-	/*J.WaitUntilDone ();
-	G.WaitUntilDone ();*/
+	J.WaitUntilDone ();
+	G.WaitUntilDone ();
 
-	/*Schema sum_sch ("sum_sch", 1, &DA);
+	Schema sum_sch ("sum_sch", 1, &DA);
 	int cnt = clear_pipe (_out, &sum_sch, true);
-	cout << " query6 returned sum for " << cnt << " groups (expected 25 groups)\n";*/
+	cout << " query6 returned sum for " << cnt << " groups (expected 25 groups)\n";
 }
 
 void q7 () { 

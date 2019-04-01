@@ -1,8 +1,9 @@
 #include "test.h"
+#include <iostream>
+#include <gtest/gtest.h>
 #include "BigQ.h"
 #include "RelOp.h"
 #include <pthread.h>
-#include "BigQ.h"
 
 Attribute IA = { "int", Int };
 Attribute SA = { "string", String };
@@ -93,7 +94,7 @@ void init_SF_c(char *pred_str, int numpgs) {
 
 TEST(DBFileGoogleTest1, Query1) {
 
-	char *pred_ps = "(ps_supplycost < 10.03)";
+	char *pred_ps = "(ps_supplycost < 1.04)";
 	init_SF_ps(pred_ps, 100);
 
 	/*cout << "cnf -- ";*/
@@ -106,7 +107,7 @@ TEST(DBFileGoogleTest1, Query1) {
 	cout << "\n\n query1 returned " << cnt << " records \n";
 
 	dbf_ps.Close();
-	EXPECT_EQ(cnt, 7986);
+	EXPECT_EQ(cnt, 31);
 
 }
 
@@ -114,7 +115,7 @@ TEST(DBFileGoogleTest2, Query2) {
 
 	cout << "q2 \n";
 
-	char *pred_p = "(p_retailprice > 931.01) AND (p_retailprice < 931.3)";
+	char *pred_p = "(p_retailprice > 931.00) AND (p_retailprice < 931.31)";
 	init_SF_p(pred_p, 100);
 
 	Project P_p;
@@ -148,6 +149,7 @@ TEST(DBFileGoogleTest3, Query3) {
 	char *pred_s = "(s_suppkey = s_suppkey)";
 	init_SF_s(pred_s, 100);
 
+	cout << "query 3 started" << endl;
 	Sum T;
 	// _s (input pipe)
 	Pipe _out(1);
@@ -156,6 +158,7 @@ TEST(DBFileGoogleTest3, Query3) {
 	get_cnf(str_sum, s->schema(), func);
 	func.Print();
 	T.Use_n_Pages(1);
+
 	SF_s.Run(dbf_s, _s, cnf_s, lit_s);
 	T.Run(_s, _out, func);
 
@@ -221,14 +224,98 @@ TEST(DBFileGoogleTest4, Query4) {
 	EXPECT_EQ(cnt, 1);
 }
 
+TEST(DBFileGoogleTest5, Query5) {
+
+	char *pred_ps = "(ps_supplycost < 1000.11)";
+	init_SF_ps(pred_ps, 100);
+
+	Project P_ps;
+	Pipe __ps(pipesz);
+	int keepMe[] = { 1 };
+	int numAttsIn = psAtts;
+	int numAttsOut = 1;
+	P_ps.Use_n_Pages(buffsz);
+
+	DuplicateRemoval D;
+	// inpipe = __ps
+	Pipe ___ps(pipesz);
+	Schema __ps_sch("__ps", 1, &IA);
+
+	WriteOut W;
+	// inpipe = ___ps
+	char *fwpath = "ps.w.tmp";
+	FILE *writefile = fopen(fwpath, "w");
+
+	SF_ps.Run(dbf_ps, _ps, cnf_ps, lit_ps);
+	P_ps.Run(_ps, __ps, keepMe, numAttsIn, numAttsOut);
+	D.Run(__ps, ___ps, __ps_sch);
+	W.Run(___ps, writefile, __ps_sch);
+
+	SF_ps.WaitUntilDone();
+	P_ps.WaitUntilDone();
+	D.WaitUntilDone();
+	W.WaitUntilDone();
+
+	cout << " query5 finished..output written to file " << fwpath << "\n";
+	EXPECT_EQ(1, 1);
+}
+
+TEST(DBFileGoogleTest6, Query6) {
+
+	cout << " query6 \n";
+	char *pred_s = "(s_suppkey = s_suppkey)";
+	init_SF_s (pred_s, 100);
+	SF_s.Run(dbf_s, _s, cnf_s, lit_s); // 10k recs qualified	
+
+	char *pred_ps = "(ps_suppkey = ps_suppkey)";
+	init_SF_ps(pred_ps, 100);
+
+	Join J;
+	// left _s
+	// right _ps
+	Pipe _s_ps(pipesz);
+	CNF cnf_p_ps;
+	Record lit_p_ps;
+	get_cnf("(s_suppkey = ps_suppkey)", s->schema(), ps->schema(), cnf_p_ps, lit_p_ps);
+
+	int outAtts = sAtts + psAtts;
+	Attribute s_nationkey = { "s_nationkey", Int };
+	Attribute ps_supplycost = { "ps_supplycost", Double };
+	Attribute joinatt[] = { IA,SA,SA,s_nationkey,SA,DA,SA,IA,IA,IA,ps_supplycost,SA };
+	Schema join_sch("join_sch", outAtts, joinatt);
+
+	GroupBy G;
+	// _s (input pipe)
+	Pipe _out(100);
+	Function func;
+	char *str_sum = "(ps_supplycost)";
+	get_cnf(str_sum, &join_sch, func);
+	func.Print();
+	OrderMaker grp_order(&join_sch);
+	G.Use_n_Pages(1);
+
+	SF_ps.Run(dbf_ps, _ps, cnf_ps, lit_ps); // 161 recs qualified
+	J.Run (_s, _ps, _s_ps, cnf_p_ps, lit_p_ps);
+	G.Run (_s_ps, _out, grp_order, func);
+
+	SF_ps.WaitUntilDone();
+	J.WaitUntilDone ();
+	G.WaitUntilDone ();
+
+	Schema sum_sch ("sum_sch", 1, &DA);
+	int cnt = clear_pipe (_out, &sum_sch, true);
+	cout << " query6 returned sum for " << cnt << " groups (expected 25 groups)\n";
+	EXPECT_EQ(cnt, 25);
+}
 
 int main(int argc, char** argv) {
 
 	::testing::InitGoogleTest(&argc, argv);
 	setup();
+	cleanup();
 
-	relation *rel_ptr[] = { n, r, c, p, ps, o, li };
-	rel = rel_ptr[4];
+	/*relation *rel_ptr[] = { n, r, c, p, ps, o, li };
+	rel = rel_ptr[4];*/
 
 	return RUN_ALL_TESTS();
 }

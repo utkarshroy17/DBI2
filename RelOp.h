@@ -65,10 +65,20 @@ public:
 
 
 class Join : public RelationalOp { 
-pthread_t thread;
+
+private:
+	pthread_t thread;
+	Pipe *inPipeL;
+	Pipe *inPipeR;
+	Pipe *outPipe;
+	CNF *selOp;
+	Record *literal;
+	int nPages;
 public:
 	void Run(Pipe &inPipeL, Pipe &inPipeR, Pipe &outPipe, CNF &selOp, Record &literal);
 	void WaitUntilDone();
+	void join();
+	static void* jswpn(void *);
 	void Use_n_Pages(int n){}
 };
 class DuplicateRemoval : public RelationalOp {
