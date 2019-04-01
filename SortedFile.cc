@@ -414,13 +414,13 @@ int SortedFile::Open(char *f_path) {
 	OrderMaker *o;
 	int runlen;
 	readMetaFile(f_path, sortorder, runlen);
-	/*cout << "SortedFile::Open \n";
+	cout << "SortedFile::Open \n";
 	
 	cout << "runLength is " << runlen << endl;
-	cout << "OrderMaker is ";*/
+	cout << "OrderMaker is ";
 	
 	
-	//sortorder->Print();
+	sortorder->Print();
 	endOfFile = 0;
 	pageIndex = 1;
 
@@ -432,6 +432,10 @@ void SortedFile::MoveFirst() {
 
 	//Move the pointer to the first record in the file
 	pageIndex = 0;
+
+	/*cout << "file length " << currFile.GetLength() << endl;
+	cout << "page index" << pageIndex << endl;
+	cout << m << endl;*/
 
 	if (m == READ) {
 		// In read mode, so direct movefirst is possible
@@ -480,9 +484,12 @@ void SortedFile::Add(Record &rec) {
 
 int SortedFile::GetNext(Record &fetchme) {
 
-		ChangeWriteToRead();
+	ChangeWriteToRead();
 
 	if (endOfFile == 1) return 0;
+
+	/*cout << "file length " << currFile.GetLength() << endl;
+	cout << "page index" << pageIndex << endl;*/
 
 	fetchme.Copy(current);
 	int prevIsCurrentFull = isCurrentFull;
@@ -494,7 +501,9 @@ int SortedFile::GetNext(Record &fetchme) {
 			isCurrentFull = 0;
 		}
 		else {
-			pageIndex++;
+			cout << "file length " << currFile.GetLength() << endl;
+			cout << "page index" << pageIndex << endl;
+			pageIndex++;	
 			currFile.GetPage(readPageBuffer, pageIndex);
 			readPageBuffer->GetFirst(current);
 			isCurrentFull = 1;

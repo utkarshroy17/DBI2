@@ -72,6 +72,10 @@ char *bits;
 
 	//Write out records to the file according to the schema provided
 	void WriteRecord(Schema *mySchema, FILE *outFile);
+
+	int getNumAttrs() {
+		return ((int*)bits)[1] / sizeof(int) - 1;
+	}
 };
 
 #endif

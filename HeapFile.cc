@@ -103,6 +103,7 @@ void HeapFile::Add(Record &rec) {
 
 int HeapFile::GetNext(Record &fetchme) {
 
+	//cout << "heap file get next " << pageFlag << endl;
 	//Get first page
 	if (pageFlag == 0) {
 		currFile.GetPage(&currPage, curPageIndex);

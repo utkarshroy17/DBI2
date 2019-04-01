@@ -10,7 +10,7 @@
 
 // Helper function
 
-void GetSumRec(Record &finalRec, Type resType, int intSum, double dblSum) {
+void GetSumRec(Record *finalRec, Type resType, int intSum, double dblSum) {
 
 	string rec;
 
@@ -21,7 +21,7 @@ void GetSumRec(Record &finalRec, Type resType, int intSum, double dblSum) {
 
 		Attribute IA = { "int", Int };
 		Schema out_schema("out_sch", 1, &IA);
-		finalRec.ComposeRecord(&out_schema, rec.c_str());
+		finalRec->ComposeRecord(&out_schema, rec.c_str());
 	}
 	else if (resType == Double) {
 		rec = to_string(dblSum);
@@ -29,7 +29,7 @@ void GetSumRec(Record &finalRec, Type resType, int intSum, double dblSum) {
 
 		Attribute DA = { "double", Double };
 		Schema out_schema("out_sch", 1, &DA);
-		finalRec.ComposeRecord(&out_schema, rec.c_str());
+		finalRec->ComposeRecord(&out_schema, rec.c_str());
 	}
 }
 
@@ -42,17 +42,20 @@ void *SelectFile::ReadFromDBFile(void *args) {
 	Schema *testSchema = new Schema("catalog", "partsupp");
 
 	sf->inFile.MoveFirst();
-
+	int count = 0;
 	
 	// sf->selOperator.Print();
 
 	while (sf->inFile.GetNext(*temp)) {
 
 		if (ceng.Compare(temp, &sf->literal, &sf->selOperator)) {	
-			//temp.Print(testSchema);
+			//temp->Print(testSchema);
 			sf->outPipe->Insert(temp);
 		}
+		count++;
 	}
+
+	cout << "shutting down select file " << count << endl;
 
 	sf->outPipe->ShutDown();
 }
@@ -190,7 +193,7 @@ void *Sum::ComputeSum(void *args)
 	Type resType;
 
 	string rec;
-	Record finalRec;
+	Record *finalRec = new Record();
 
 	while (s->inPipe->Remove(temp)) {
 
@@ -202,30 +205,12 @@ void *Sum::ComputeSum(void *args)
 			dblSum += dblParam;
 	}
 
-	/*if (resType == Int) {
-
-		rec = to_string(intSum);
-		rec.append("|");
-
-		Attribute IA = { "int", Int };
-		Schema out_schema("out_sch", 1, &IA);
-		finalRec.ComposeRecord(&out_schema, rec.c_str());
-	}
-	else if (resType == Double) {
-		rec = to_string(dblSum);
-		rec.append("|");
-
-		Attribute DA = { "double", Double };
-		Schema out_schema("out_sch", 1, &DA);
-		finalRec.ComposeRecord(&out_schema, rec.c_str());
-	}*/
-
 	GetSumRec(finalRec, resType, intSum, dblSum);
 
 	cout << "double sum = " << dblSum << endl;
 	cout << "int sum = " << intSum << endl;
 
-	s->outPipe->Insert(&finalRec);
+	s->outPipe->Insert(finalRec);
 	s->outPipe->ShutDown();
 
 }
@@ -362,126 +347,117 @@ void WriteOut::Use_n_Pages(int runlen) {
 void *GroupBy::GroupByThread(void *args) {
 
 	GroupBy *gb = (GroupBy *)args;
+	
 	Record *temp = new Record(), *prev = new Record(), *toBeInserted;
 	ComparisonEngine ceng;
 	Schema *testSchema = new Schema("catalog", "partsupp");
-	/*map<Record*, vector<Record*>> groupTable;
-	map<Record*, vector<Record*>>::iterator it;*/	
 
 	int intParam = 0, intSum = 0;
 	double dblParam = 0, dblSum = 0;
-	Type resType;
-	Record finalRec;
+	Type resType;	
+
+	OrderMaker *sortorder = new OrderMaker();
+	int whichAtts[] = { 3 };
+	Type whichTypes[] = { Int };
+	sortorder->Set(1, whichAtts, whichTypes);
+
+	cout << "Inside group by thread" << endl;
 
 	Pipe sortedPipe(100);
-	BigQ *bq = new BigQ(*gb->inPipe, sortedPipe, *gb->groupAtts, gb->runLength);
+	BigQ bq(*gb->inPipe, sortedPipe, *sortorder, gb->runLength);
+
+	Attribute attr;
+	attr.name = (char *)"sum";
+	attr.myType = resType;
+	Schema *schema = new Schema((char *)"dummy", 1, &attr);
+
+	int numAttsToKeep = gb->groupAtts->numAtts + 1;
+	int *attsToKeep = new int[numAttsToKeep];
+	attsToKeep[0] = 0;  //for sumRec
+	cout << "[ 0";
+	for (int i = 1; i < numAttsToKeep; i++)
+	{
+		attsToKeep[i] = gb->groupAtts->whichAtts[i - 1];
+		cout << ", " << attsToKeep[i];
+	}
+	cout << "]" << endl;
+
+	Record *finalRec = new Record();
+	int count = 0;	
 
 	if (sortedPipe.Remove(prev)) {
 		
-		resType = gb->computeMe.Apply(*prev, intParam, dblParam);
+		cout << "sorted file first rec" << endl;
+		resType = gb->computeMe->Apply(*prev, intParam, dblParam);
 
 		if (resType == Int)
 			intSum += intParam;
 		else if (resType == Double)
 			dblSum += dblParam;
+		count++;
 	}
 
 	while (sortedPipe.Remove(temp)) {
 
-		if (ceng.Compare(temp, prev, gb->groupAtts) != 0) {
+		/*cout << "sorted file other recs" << endl;*/
+		if (ceng.Compare(temp, prev, sortorder) != 0) {
 
+			cout << "inside comparison" << endl;
+
+			
 			GetSumRec(finalRec, resType, intSum, dblSum);
 
-			gb->outPipe->Insert(&finalRec);
+			Record *tuple = new Record;
+			tuple->MergeRecords(finalRec, prev, 1, gb->groupAtts->numAtts, attsToKeep, numAttsToKeep, 1);
+
+			//tuple->Print(&join_sch);
+
+			gb->outPipe->Insert(tuple);
 			
+			//cout << dblSum << endl;
+			/*cout << "prev - ";
+			prev->Print(gb->grpSchema);
+			cout << "temp - ";
+			temp->Print(gb->grpSchema);*/
+
 			intSum = 0;
 			dblSum = 0;
+			count++;			
 		}
-
-		resType = gb->computeMe.Apply(*temp, intParam, dblParam);
+		
+		resType = gb->computeMe->Apply(*temp, intParam, dblParam);
 
 		if (resType == Int)
 			intSum += intParam;
 		else if (resType == Double)
 			dblSum += dblParam;
 		
-
+		//temp->Print(gb->grpSchema);
 		prev->Copy(temp);
 	}
 
+	cout << "final count - " << count << endl;
+	cout << "double sum - " << dblSum << endl;
+
 	GetSumRec(finalRec, resType, intSum, dblSum);
-
-	gb->outPipe->Insert(&finalRec);
-
-	/*while (gb->inPipe->Remove(temp)) {
 		
-		for(it = groupTable.begin(); it != groupTable.end(); it++) {
+	Record *tuple = new Record;
+	tuple->MergeRecords(finalRec, prev, 1, gb->groupAtts->numAtts, attsToKeep, numAttsToKeep, 1);
 
-			if (ceng.Compare(temp, it->first, gb->groupAtts) == 0) {
+	gb->outPipe->Insert(tuple);
 
-				keyPresent = true;
-				it->second.push_back(temp);
-			}
-		}
-
-		if (!keyPresent)
-			groupTable.insert(pair<Record*, vector<Record*> >(temp, {}));
-	}
-
-	
-
-	for (it = groupTable.begin(); it != groupTable.end(); it++) {
-
-		resType = gb->computeMe.Apply(*it->first, intParam, dblParam);
-
-		if (resType == Int)
-			intSum += intParam;
-		else if (resType == Double)
-			dblSum += dblParam;
-
-		int n = it->second.size();
-
-		for (int i = 0; i < n; i++)
-		{
-			resType = gb->computeMe.Apply(*it->second[i], intParam, dblParam);
-
-			if (resType == Int)
-				intSum += intParam;
-			else if (resType == Double)
-				dblSum += dblParam;
-		}
-
-		if (resType == Int) {
-
-			rec = to_string(intSum);
-			rec.append("|");
-
-			Attribute IA = { "int", Int };
-			Schema out_schema("out_sch", 1, &IA);
-			finalRec.ComposeRecord(&out_schema, rec.c_str());
-		}
-		else if (resType == Double) {
-			rec = to_string(dblSum);
-			rec.append("|");
-
-			Attribute DA = { "double", Double };
-			Schema out_schema("out_sch", 1, &DA);
-			finalRec.ComposeRecord(&out_schema, rec.c_str());
-		}
-
-		gb->outPipe->Insert(&finalRec);
-	}*/
-	
+	cout << "shutting group by" << endl;
 	gb->outPipe->ShutDown();
 
 }
 
 void GroupBy::Run(Pipe &inPipe, Pipe &outPipe, OrderMaker &groupAtts, Function &computeMe) {
 
+	cout << "Inside group by run" << endl;
 	this->inPipe = &inPipe;
 	this->outPipe = &outPipe;
 	this->groupAtts = &groupAtts;
-	this->computeMe = computeMe;
+	this->computeMe = &computeMe;
 
 	pthread_create(&thread, NULL, GroupByThread, this);
 }
@@ -513,13 +489,17 @@ struct JoinUtil{
 	~JoinUtil();
 };
 
-void getJoinAttsToKeep(int *attsToKeep, int numAttsL, int numAttsR){
+int *getJoinAttsToKeep(int numAttsL, int numAttsR){
+
+	int *attsToKeep = new int[numAttsL+numAttsR];
 	for(int i=0; i<numAttsL; i++){
 		attsToKeep[i] = i;
 	}
 	for(int i=0; i<numAttsR; i++){
 		attsToKeep[i + numAttsL] = i;
 	}
+
+	return attsToKeep;
 }
 
 void *joinWorker(void *args){
@@ -533,24 +513,43 @@ void *joinWorker(void *args){
 
 	DBFile dbfile;
 	dbfile.Create("jointemp", heap, NULL);
+	int count = 0;
+	Schema *testSchema = new Schema("catalog", "partsupp");
+
 	while(jU->inPipeR->Remove(rr)){
 		dbfile.Add(*rr);
+		count++;
 	}
+
+	cout << count << endl;
+
 	dbfile.Close();
+	
+	jU->inPipeL->Remove(lr);	
 
-	jU->inPipeL->Remove(lr);
-	dbfile.GetNext(*rr);
+	cout << "got next" << endl;
 
-	int numAttsL = numAttsL = ((int *) lr->bits)[1] / sizeof(int) -1;
-	int numAttsR = ((int *) rr->bits)[1] / sizeof(int) -1;
-	int attsToKeep[numAttsL + numAttsR];
-	getJoinAttsToKeep(attsToKeep, numAttsL, numAttsR);
+	int numAttsL = ((int *) lr->bits)[1] / sizeof(int) -1;
+	//int numAttsR = ((int *) rr->bits)[1] / sizeof(int) -1;
+	int numAttsR = NULL;
+	int *attsToKeep;	
 
 	ComparisonEngine ceng;
+
+	/*cout << "print the recs" << endl;
+	while (dbfile.GetNext(*rr))
+	{
+		rr->Print(testSchema);
+	}*/
 
 	do{
 		dbfile.Open("jointemp");
 		dbfile.MoveFirst();
+		dbfile.GetNext(*rr);
+		if (numAttsR == NULL) {
+			numAttsR = ((int *)rr->bits)[1] / sizeof(int) - 1;
+			attsToKeep = getJoinAttsToKeep(numAttsL, numAttsR);
+		}			
 		do{
 			if (ceng.Compare(lr, rr, jU->literal, jU->selOp)) {	
 				jr->MergeRecords(lr, rr, numAttsL, numAttsR, attsToKeep, numAttsL + numAttsR, numAttsL);
@@ -559,6 +558,8 @@ void *joinWorker(void *args){
 		}while(dbfile.GetNext(*rr));
 		dbfile.Close();
 	}while (jU->inPipeL->Remove(lr));
+
+	cout << "shutting join" << endl;
 	jU->outPipe->ShutDown();
 }
 
